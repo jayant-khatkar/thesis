@@ -4,6 +4,7 @@ import glob
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
+import functools
 from data_gen import *
 
 import keras
@@ -14,16 +15,30 @@ from keras.layers import Dense, GlobalAveragePooling2D
 from keras.preprocessing.image import ImageDataGenerator
 from keras.optimizers import SGD
 from keras import metrics
+from sklearn.metrics import confusion_matrix, f1_score
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D
+from keras.utils import plot_model
 
 IM_WIDTH, IM_HEIGHT = 150, 150
-NB_EPOCHS = 20
+NB_EPOCHS = 30
 BAT_SIZE = 32
 FC_SIZE = 1024
 NB_IV3_LAYERS_TO_FREEZE = 172
 
+def predictor(model, test_generator, steps):
+    y_pred = np.array([])
+    y_true = np.array([])
+
+    for i in range(steps):
+        features, labels = next(test_generator)
+        batch_pred = model.predict(features)
+
+        y_pred = np.append(y_pred, batch_pred)
+        y_true = np.append(y_true, labels)
+
+    return y_pred, y_true
 
 def get_nb_files(directory):
     """Get number of files by searching directory recursively"""
@@ -80,12 +95,14 @@ def setup_to_transfer_learn(model, base_model):
     for layer in base_model.layers:
         layer.trainable = False
 
+    top3_acc = functools.partial(keras.metrics.top_k_categorical_accuracy, k=3)
     model.compile(
         optimizer='rmsprop',
         loss='categorical_crossentropy',
         metrics=[
             metrics.categorical_accuracy,
-            metrics.top_k_categorical_accuracy
+            metrics.top_k_categorical_accuracy,
+            top3_acc
             ]
         )
 
@@ -96,6 +113,8 @@ def train(args):
     nb_val_samples = get_nb_files(args.val_dir)
     nb_epoch = int(args.nb_epoch)
     batch_size = int(args.batch_size)
+    train_steps = int(nb_train_samples/batch_size)
+    val_steps = int(nb_val_samples/batch_size)
 
     train_datagen =  ImageDataGenerator(
         preprocessing_function=preprocess_input,
@@ -133,18 +152,32 @@ def train(args):
     #model = simple_model(nb_classes)
     history_tl = model.fit_generator(
         train_generator,
-        nb_epoch=nb_epoch,
-        samples_per_epoch=nb_train_samples,
+        epochs=nb_epoch,
+        steps_per_epoch=train_steps,
         validation_data=validation_generator,
-        nb_val_samples=nb_val_samples,
-        class_weight='auto'
+        validation_steps=val_steps,
+        class_weight='auto',
+        verbose =2
         )
 
     model.save(args.output_path  + "model.model")
 
-    scores = model.evaluate_generator(validation_generator, steps = 500)
+    scores = model.evaluate_generator(validation_generator, steps = val_steps)
+    y_pred, y_true = predictor(model, validation_generator, steps = val_steps)
+
+    conf = confusion_matrix(y_true = y_true, y_pred = y_pred)
+    f1scores  = f1_score(y_true = y_true, y_pred = y_pred, average = None)
+
     print("Accuracy: %.2f%%" % (scores[1]*100))
-    np.save(args.output_path + "scores", scores, history_tl)
+
+    np.savez(args.output_path + "output_vars.npz",
+        scores      = scores,
+        hist        = history_tl,
+        y_pred      = y_pred,
+        y_true      = y_true,
+        conf        = conf,
+        f1scores    = f1scores
+        )
     print("done")
 
 
