@@ -70,6 +70,7 @@ def setup_to_transfer_learn(model, base_model):
 
 
 def train(args):
+    from_layer = 'mixed0'
     nb_train_samples = get_nb_files(args.train_dir)
     nb_classes = len(glob.glob(args.train_dir + "/*"))
     nb_val_samples = get_nb_files(args.val_dir)
@@ -105,11 +106,21 @@ def train(args):
     )
 
 
-    base_model, model = retrain_inception(nb_classes, 'mixed1')
+    base_model, model = retrain_inception(nb_classes, from_layer)
 
     setup_to_transfer_learn(model, base_model)
 
     #model = simple_model(nb_classes)
+
+    tensorboard = keras.callbacks.TensorBoard(
+        log_dir=args.output_path,
+        histogram_freq=5,
+        batch_size=batch_size,
+        write_graph=True,
+        write_grads=False,
+        write_images=True
+        )
+
     history_tl = model.fit_generator(
         train_generator,
         epochs=nb_epoch,
@@ -117,6 +128,7 @@ def train(args):
         validation_data=validation_generator,
         validation_steps=val_steps,
         class_weight='auto',
+        callbacks = tensorboard,
         verbose =2
         )
 
