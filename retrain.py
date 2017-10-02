@@ -5,7 +5,8 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import functools
-from data_gen import *
+
+from models import *
 
 import keras
 from keras import __version__
@@ -49,45 +50,6 @@ def get_nb_files(directory):
         for dr in dirs:
             cnt += len(glob.glob(os.path.join(r, dr + "/*")))
     return cnt
-
-
-
-def add_new_layer(base_model, nb_classes, layer_id):
-    """Add last layer to the convnet
-    Args:
-        base_model: keras model excluding top
-        nb_classes: # of classes
-        layer_id  : layer name to continue from (str)
-    Returns:
-        new keras model with last layer
-    """
-    while not base_model.layers[-1] == base_model.get_layer(layer_id):
-        base_model.layers.pop()
-
-    x = base_model.get_layer(layer_id).output
-    x = GlobalAveragePooling2D()(x)
-    hidden = Dense(FC_SIZE, activation='relu')(x) #new FC
-    predictions = Dense(nb_classes, activation='softmax')(hidden) #new softmax layer
-    model = Model(input=base_model.input, output=predictions)
-    return model
-
-def simple_model(nb_classes):
-    model = Sequential()
-    model.add(Conv2D(32, kernel_size=(3, 3),
-        activation='relu',
-        input_shape=(150,150,3)))
-    model.add(Conv2D(32, (3, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.25))
-    model.add(Flatten())
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.5))
-    model.add(Dense(nb_classes, activation='softmax'))
-
-    model.compile(loss=keras.losses.categorical_crossentropy,
-        optimizer=keras.optimizers.Adadelta(),
-        metrics=['accuracy'])
-    return model
 
 
 def setup_to_transfer_learn(model, base_model):
@@ -143,9 +105,7 @@ def train(args):
     )
 
 
-    base_model = InceptionV3(weights='imagenet', include_top=True)
-
-    model = add_new_layer(base_model, nb_classes, 'mixed1')
+    base_model, model = retrain_inception(nb_classes, 'mixed1')
 
     setup_to_transfer_learn(model, base_model)
 
