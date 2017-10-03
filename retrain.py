@@ -9,7 +9,6 @@ import functools
 from models import *
 
 import keras
-from keras import __version__
 from keras.applications.inception_v3 import InceptionV3, preprocess_input
 from keras.models import Model
 from keras.layers import Dense, GlobalAveragePooling2D
@@ -25,8 +24,6 @@ from keras.utils import plot_model
 IM_WIDTH, IM_HEIGHT = 150, 150
 NB_EPOCHS = 30
 BAT_SIZE = 32
-FC_SIZE = 1024
-NB_IV3_LAYERS_TO_FREEZE = 172
 
 def predictor(model, test_generator, steps):
     y_pred = np.array([])
@@ -64,7 +61,7 @@ def setup_to_transfer_learn(model, base_model):
         metrics=[
             metrics.categorical_accuracy,
             metrics.top_k_categorical_accuracy,
-            top3_acc
+            #top3_acc
             ]
         )
 
