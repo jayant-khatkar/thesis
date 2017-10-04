@@ -8,7 +8,7 @@ import functools
 import keras
 
 from dual_im_gen import dual_im_gen
-from DI_models import dual_im
+from DI_model import dual_im
 
 from keras.applications.inception_v3 import InceptionV3, preprocess_input
 from keras.models import Model
@@ -27,8 +27,8 @@ from keras.utils import plot_model
 batch_size = 32
 NB_EPOCHS  = 20
 
-test_address = "/Users/user1/Documents/thesis/data/split_images/benthoz_retrain/testing"
-train_address = "/Users/user1/Documents/thesis/data/split_images/benthoz_retrain/training"
+test_address = "/project/BEN_DL/split_images/benthoz_retrain/testing"
+train_address = "/project/BEN_DL/split_images/benthoz_retrain/training"
 out_path = "/project/BEN_DL/output/DI/"
 
 nb_classes = len(glob.glob(train_address + "/*"))
@@ -49,6 +49,10 @@ def transfer_learn_DI(model):
             ]
         )
 
+def get_nb_files(directory):
+    """Get number of files by searching directory recursively"""
+    cnt = len(glob.glob(os.path.join(directory,'*/*.jpg')))
+    return cnt
 
 if __name__=="__main__":
     trial_num = max([int(d) for d in os.listdir(out_path) if os.path.isdir(out_path + d) and d.isdigit()] +[0]) + 1
@@ -63,6 +67,7 @@ if __name__=="__main__":
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
+    model = dual_im(nb_classes, 'mixed0', 'mixed2')
 
     transfer_learn_DI(model)
 
