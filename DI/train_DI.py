@@ -8,7 +8,7 @@ import functools
 import keras
 
 from dual_im_gen import dual_im_gen
-from models import dual_im
+from DI_models import dual_im
 
 from keras.applications.inception_v3 import InceptionV3, preprocess_input
 from keras.models import Model
