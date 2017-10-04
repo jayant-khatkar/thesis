@@ -23,12 +23,15 @@ from keras.layers import Conv2D, MaxPooling2D
 from keras.utils import plot_model
 
 
-nb_classes = 24
+
 batch_size = 32
+NB_EPOCHS  = 20
 
 test_address = "/Users/user1/Documents/thesis/data/split_images/benthoz_retrain/testing"
 train_address = "/Users/user1/Documents/thesis/data/split_images/benthoz_retrain/training"
 out_path = "/project/BEN_DL/output/DI/"
+
+nb_classes = len(glob.glob(train_address + "/*"))
 
 def transfer_learn_DI(model):
 
@@ -50,6 +53,13 @@ def transfer_learn_DI(model):
 if __name__=="__main__":
     trial_num = max([int(d) for d in os.listdir(out_path) if os.path.isdir(out_path + d) and d.isdigit()] +[0]) + 1
     save_dir = out_path + str(trial_num) + "/"
+
+    nb_train_samples = get_nb_files(train_address)
+    nb_val_samples = get_nb_files(test_address)
+
+    train_steps = int(nb_train_samples/batch_size)
+    val_steps = int(nb_val_samples/batch_size)
+
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
@@ -70,13 +80,13 @@ if __name__=="__main__":
 
     history_tl = model.fit_generator(
         dim_gen_train,
-        epochs=1,
-        steps_per_epoch=2,
+        epochs=NB_EPOCHS,
+        steps_per_epoch=train_steps,
         validation_data=dim_gen_test,
-        validation_steps=1,
+        validation_steps=val_steps,
         class_weight='auto',
 #        callbacks = [tensorboard], #tensorboard only works when not using generator for validation data if printing histograms
-        verbose =2
+        verbose =1
         )
 
     model.save(save_dir  + "model.model")
