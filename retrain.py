@@ -9,6 +9,7 @@ import functools
 from models import *
 
 import keras
+
 from keras.applications.inception_v3 import InceptionV3, preprocess_input
 from keras.models import Model
 from keras.layers import Dense, GlobalAveragePooling2D
@@ -61,7 +62,7 @@ def setup_to_transfer_learn(model, base_model):
         metrics=[
             metrics.categorical_accuracy,
             metrics.top_k_categorical_accuracy,
-            #top3_acc
+            top3_acc
             ]
         )
 
@@ -125,7 +126,7 @@ def train(args):
         validation_data=validation_generator,
         validation_steps=val_steps,
         class_weight='auto',
-        callbacks = tensorboard,
+#        callbacks = [tensorboard],
         verbose =2
         )
 
@@ -160,10 +161,10 @@ if __name__=="__main__":
     a.add_argument("--nb_epoch", default=NB_EPOCHS)
     a.add_argument("--batch_size", default=BAT_SIZE)
     trial_num = max([int(d) for d in os.listdir(out_path) if os.path.isdir(out_path + d) and d.isdigit()] +[0]) + 1
-    out_path = "/project/BEN_DL/output/retrained/" + str(trial_num) + "/"
-    if not os.path.exists(out_path):
-        os.makedirs(out_path)
-    a.add_argument("--output_path", default=out_path)
+    save_dir = out_path + str(trial_num) + "/"
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    a.add_argument("--output_path", default=save_dir)
     a.add_argument("--plot", action="store_true")
 
     args = a.parse_args()
