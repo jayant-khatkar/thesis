@@ -50,10 +50,11 @@ def get_nb_files(directory):
     return cnt
 
 
-def setup_to_transfer_learn(model, base_model):
+def setup_to_transfer_learn(model):
     """Freeze all layers and compile the model"""
-    for layer in base_model.layers:
-        layer.trainable = False
+    for layer in model.layers:
+        if layer.name.endswith('base'):
+            layer.trainable = False
 
     top3_acc = functools.partial(keras.metrics.top_k_categorical_accuracy, k=3)
     model.compile(
@@ -104,9 +105,9 @@ def train(args):
     )
 
 
-    base_model, model = retrain_inception(nb_classes, from_layer)
+    model = retrain_inception(nb_classes, from_layer)
 
-    setup_to_transfer_learn(model, base_model)
+    setup_to_transfer_learn(model)
 
     #model = simple_model(nb_classes)
 
