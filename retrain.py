@@ -27,16 +27,18 @@ NB_EPOCHS = 30
 BAT_SIZE = 32
 
 def predictor(model, test_generator, steps):
-    y_pred = np.array([])
-    y_true = np.array([])
+    y_pred = np.array([]).reshape(0,24)
+    y_true = np.array([]).reshape(0,24)
 
     for i in range(steps):
         features, labels = next(test_generator)
         batch_pred = model.predict(features)
 
-        y_pred = np.append(y_pred, batch_pred)
-        y_true = np.append(y_true, labels)
+        y_pred = np.append(y_pred, batch_pred, axis=0)
+        y_true = np.append(y_true, labels, axis=0)
 
+    y_true = np.argmax(y_true, axis=1)
+    y_pred = np.argmax(y_pred, axis=1)
     return y_pred, y_true
 
 def get_nb_files(directory):
@@ -143,13 +145,12 @@ def train(args):
 
     np.savez(args.output_path + "output_vars.npz",
         scores      = scores,
-        hist        = history_tl,
+        hist        = history_tl.history,
         y_pred      = y_pred,
         y_true      = y_true,
         conf        = conf,
         f1scores    = f1scores
         )
-    print("done")
 
 
 if __name__=="__main__":

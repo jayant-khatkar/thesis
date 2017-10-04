@@ -49,6 +49,21 @@ def transfer_learn_DI(model):
             ]
         )
 
+def predictor(model, test_generator, steps):
+    y_pred = np.array([]).reshape(0,24)
+    y_true = np.array([]).reshape(0,24)
+
+    for i in range(steps):
+        features, labels = next(test_generator)
+        batch_pred = model.predict(features)
+
+        y_pred = np.append(y_pred, batch_pred, axis=0)
+        y_true = np.append(y_true, labels, axis=0)
+
+    y_true = np.argmax(y_true, axis=1)
+    y_pred = np.argmax(y_pred, axis=1)
+    return y_pred, y_true
+
 def get_nb_files(directory):
     """Get number of files by searching directory recursively"""
     cnt = len(glob.glob(os.path.join(directory,'*/*.jpg')))
@@ -74,14 +89,14 @@ if __name__=="__main__":
     dim_gen_test  = dual_im_gen(test_address,  batch_size)
     dim_gen_train = dual_im_gen(train_address, batch_size)
 
-    tensorboard = keras.callbacks.TensorBoard(
-        log_dir=save_dir,
-        histogram_freq=5,
-        batch_size=batch_size,
-        write_graph=True,
-        write_grads=False,
-        write_images=True
-        )
+    # tensorboard = keras.callbacks.TensorBoard(
+    #     log_dir=save_dir,
+    #     histogram_freq=5,
+    #     batch_size=batch_size,
+    #     write_graph=True,
+    #     write_grads=False,
+    #     write_images=True
+    #     )
 
     history_tl = model.fit_generator(
         dim_gen_train,
@@ -95,3 +110,18 @@ if __name__=="__main__":
         )
 
     model.save(save_dir  + "model.model")
+
+    scores = model.evaluate_generator(dim_gen_test, steps = val_steps)
+    y_pred, y_true = predictor(model, dim_gen_test, steps = val_steps)
+
+    conf = confusion_matrix(y_true = y_true, y_pred = y_pred)
+    f1scores  = f1_score(y_true = y_true, y_pred = y_pred, average = None)
+
+    np.savez(save_dir + "output_vars.npz",
+        scores      = scores,
+        hist        = history_tl.history,
+        y_pred      = y_pred,
+        y_true      = y_true,
+        conf        = conf,
+        f1scores    = f1scores
+        )

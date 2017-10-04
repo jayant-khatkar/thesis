@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 #data_dir   = "/Users/user1/Documents/thesis/data/split_images/benthoz_retrain/training"
 source_resize = 200
 
+#/project/BEN_DL/benthoz2015/imagelist.csv
+#/Users/user1/Documents/thesis/data/benthoz2015/imagelist.csv
 imlist = pd.read_csv("/project/BEN_DL/benthoz2015/imagelist.csv")
 
 #im_id = 1744579
@@ -72,7 +74,9 @@ def get_im_pair(crop_address):
     return crop, source
 
 def get_source(web_loc):
-    benthoz_dir = "/project/BEN_DL/benthoz2015/"
+    #/Users/user1/Documents/thesis/data/benthoz2015
+    #/project/BEN_DL/benthoz2015/
+    benthoz_dir = "/project/BEN_DL/benthoz2015"
     real_address = os.path.join(
         benthoz_dir,
         web_loc.split('/')[0],
