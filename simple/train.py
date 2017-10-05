@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import functools
 
-from models import *
+from model_simple import simple_model
 
 import keras
 
@@ -22,8 +22,8 @@ from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 from keras.utils import plot_model
 
-IM_WIDTH, IM_HEIGHT = 150, 150
-NB_EPOCHS = 30
+IM_WIDTH, IM_HEIGHT = 100, 100
+NB_EPOCHS = 10
 BAT_SIZE = 32
 
 def predictor(model, test_generator, steps):
@@ -43,44 +43,28 @@ def predictor(model, test_generator, steps):
 
 def get_nb_files(directory):
     """Get number of files by searching directory recursively"""
-    if not os.path.exists(directory):
-        return 0
-    cnt = 0
-    for r, dirs, files in os.walk(directory):
-        for dr in dirs:
-            cnt += len(glob.glob(os.path.join(r, dr + "/*")))
+    cnt = len(glob.glob(os.path.join(directory,'*/*.jpg')))
     return cnt
 
-
-def setup_to_transfer_learn(model):
-    """Freeze all layers and compile the model"""
-    for layer in model.layers:
-        if layer.name.endswith('base'):
-            layer.trainable = False
-
-    top3_acc = functools.partial(keras.metrics.top_k_categorical_accuracy, k=3)
-    model.compile(
-        optimizer='rmsprop',
-        loss='categorical_crossentropy',
-        metrics=[
-            metrics.categorical_accuracy,
-            metrics.top_k_categorical_accuracy,
-            top3_acc
-            ]
-        )
-
-
 def train(args):
-    from_layer = 'mixed0'
     nb_train_samples = get_nb_files(args.train_dir)
     nb_classes = len(glob.glob(args.train_dir + "/*"))
     nb_val_samples = get_nb_files(args.val_dir)
+    nb_test_samples = get_nb_files(args.test_dir)
     nb_epoch = int(args.nb_epoch)
     batch_size = int(args.batch_size)
     train_steps = int(nb_train_samples/batch_size)
     val_steps = int(nb_val_samples/batch_size)
+    test_steps = int(nb_test_samples/batch_size)
 
     train_datagen =  ImageDataGenerator(
+        preprocessing_function=preprocess_input,
+        rotation_range=30,
+        horizontal_flip=True,
+        vertical_flip=True,
+        )
+
+    val_datagen =  ImageDataGenerator(
         preprocessing_function=preprocess_input,
         rotation_range=30,
         horizontal_flip=True,
@@ -100,27 +84,28 @@ def train(args):
         batch_size=batch_size,
     )
 
-    validation_generator = test_datagen.flow_from_directory(
+    validation_generator = val_datagen.flow_from_directory(
         args.val_dir,
         target_size=(IM_WIDTH, IM_HEIGHT),
         batch_size=batch_size,
     )
 
-
-    model = retrain_inception(nb_classes, from_layer)
-
-    setup_to_transfer_learn(model)
-
-    #model = simple_model(nb_classes)
-
-    tensorboard = keras.callbacks.TensorBoard(
-        log_dir=args.output_path,
-        histogram_freq=5,
+    test_generator = test_datagen.flow_from_directory(
+        args.test_dir,
+        target_size=(IM_WIDTH, IM_HEIGHT),
         batch_size=batch_size,
-        write_graph=True,
-        write_grads=False,
-        write_images=True
-        )
+    )
+
+    model = simple_model(nb_classes, args.n_kernels, args.n_hidden)
+
+    # tensorboard = keras.callbacks.TensorBoard(
+    #     log_dir=args.output_path,
+    #     histogram_freq=5,
+    #     batch_size=batch_size,
+    #     write_graph=True,
+    #     write_grads=False,
+    #     write_images=True
+    #     )
 
     history_tl = model.fit_generator(
         train_generator,
@@ -135,8 +120,8 @@ def train(args):
 
     model.save(args.output_path  + "model.model")
 
-    scores = model.evaluate_generator(validation_generator, steps = val_steps)
-    y_pred, y_true = predictor(model, validation_generator, steps = val_steps)
+    scores = model.evaluate_generator(test_generator, steps = test_steps)
+    y_pred, y_true = predictor(model, test_generator, steps = test_steps)
 
     conf = confusion_matrix(y_true = y_true, y_pred = y_pred)
     f1scores  = f1_score(y_true = y_true, y_pred = y_pred, average = None)
@@ -154,14 +139,18 @@ def train(args):
 
 
 if __name__=="__main__":
-    out_path = "/project/BEN_DL/output/retrained/"
+    out_path = "/project/BEN_DL/output/simple/"
     a = argparse.ArgumentParser()
     train_dir = "/project/BEN_DL/split_images/benthoz_retrain/training"
-    test_dir  = "/project/BEN_DL/split_images/retrain_50/testing"
+    test_dir = "/project/BEN_DL/split_images/benthoz_retrain/testing"
+    val_dir  = "/project/BEN_DL/split_images/retrain_50/testing"
     a.add_argument("--train_dir", default = train_dir)
-    a.add_argument("--val_dir", default = test_dir)
-    a.add_argument("--nb_epoch", default=NB_EPOCHS)
-    a.add_argument("--batch_size", default=BAT_SIZE)
+    a.add_argument("--test_dir", default = test_dir)
+    a.add_argument("--val_dir", default = val_dir)
+    a.add_argument("--n_kernels", default=64, type=int)
+    a.add_argument("--n_hidden", default=512, type=int)
+    a.add_argument("--nb_epoch", default=NB_EPOCHS, type=int)
+    a.add_argument("--batch_size", default=BAT_SIZE, type=int)
     trial_num = max([int(d) for d in os.listdir(out_path) if os.path.isdir(out_path + d) and d.isdigit()] +[0]) + 1
     save_dir = out_path + str(trial_num) + "/"
     if not os.path.exists(save_dir):

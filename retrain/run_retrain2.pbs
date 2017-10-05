@@ -1,0 +1,10 @@
+#!/bin/bash
+#PBS -P RDS-FEI-BEN_DL-RW
+#PBS -l select=1:ncpus=1:mem=16GB:ngpus=1
+#PBS -l walltime=5:00:00
+module load python/3.5.1
+source ~/tf13/bin/activate
+module load cuda/8.0.44
+
+cd ~/thesis/retrain
+python retrain.py --layer_id mixed0 --n_kernels 32 --n_hidden 256

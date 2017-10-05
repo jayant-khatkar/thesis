@@ -27,7 +27,7 @@ from keras.utils import plot_model
 batch_size = 32
 NB_EPOCHS  = 20
 
-test_address = "/project/BEN_DL/split_images/benthoz_retrain/testing"
+test_address  = "/project/BEN_DL/split_images/retrain_50/testing"
 train_address = "/project/BEN_DL/split_images/benthoz_retrain/training"
 out_path = "/project/BEN_DL/output/DI/"
 
@@ -70,6 +70,9 @@ def get_nb_files(directory):
     return cnt
 
 if __name__=="__main__":
+    a = argparse.ArgumentParser()
+    a.add_argument("--source_layer", default='mixed2')
+    args = a.parse_args()
     trial_num = max([int(d) for d in os.listdir(out_path) if os.path.isdir(out_path + d) and d.isdigit()] +[0]) + 1
     save_dir = out_path + str(trial_num) + "/"
 
@@ -82,7 +85,7 @@ if __name__=="__main__":
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    model = dual_im(nb_classes, 'mixed0', 'mixed2')
+    model = dual_im(nb_classes, 'mixed0', args.source_layer)
 
     transfer_learn_DI(model)
 

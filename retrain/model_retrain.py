@@ -19,12 +19,10 @@ from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 from keras.utils import plot_model
 
-FC_SIZE = 512
-
-def retrain_inception(nb_classes, layer_id):
+def retrain_inception(nb_classes, layer_id, n_kernels, n_hidden):
     """
     Create Model with Inception V3 layers till the layer_id layer_id
-    And then one hidden and one output FC layers
+    And then 2 convs, one hidden and one output FC layers
 
     Args:
         nb_classes: # of classes in putput
@@ -43,38 +41,10 @@ def retrain_inception(nb_classes, layer_id):
         layer.name = layer.name + 'base'
 
     base_out = base_model.get_layer(layer_id + 'base').output
-    my_conv1 = Conv2D(128, (3,3), strides=(2, 2), padding='valid', activation='relu')(base_out)
-    my_conv2 = Conv2D(128, (3,3), strides=(2, 2), padding='valid', activation='relu')(my_conv1)
+    my_conv1 = Conv2D(n_kernels, (3,3), strides=(2, 2), padding='valid', activation='relu')(base_out)
+    my_conv2 = Conv2D(n_kernels, (3,3), strides=(2, 2), padding='valid', activation='relu')(my_conv1)
     conv_out = GlobalAveragePooling2D()(my_conv2)
-    hidden = Dense(FC_SIZE, activation='relu')(conv_out) #new FC
+    hidden = Dense(n_hidden, activation='relu')(conv_out) #new FC
     predictions = Dense(nb_classes, activation='softmax')(hidden)
     model = Model(inputs=base_model.input, outputs=predictions)
-    return model
-
-def simple_model(nb_classes):
-    """
-    Create Simple CNN - 2conv layers, 1 FC hidden, 1 FC output
-
-    Args:
-        nb_classes: # of classes in putput
-
-    Returns:
-        keras Model
-
-    """
-    model = Sequential()
-    model.add(Conv2D(32, kernel_size=(3, 3),
-        activation='relu',
-        input_shape=(150,150,3)))
-    model.add(Conv2D(32, (3, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.25))
-    model.add(Flatten())
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.5))
-    model.add(Dense(nb_classes, activation='softmax'))
-
-    model.compile(loss=keras.losses.categorical_crossentropy,
-        optimizer=keras.optimizers.Adadelta(),
-        metrics=['accuracy'])
     return model
