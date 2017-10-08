@@ -40,19 +40,39 @@ def transfer_learn_hier(model):
         )
 
 def predictor(model, test_generator, steps):
-    y_pred = np.array([]).reshape(0,24)
-    y_true = np.array([]).reshape(0,24)
+
+    y0_pred = np.array([]).reshape(0,3)
+    y0_true = np.array([]).reshape(0,3)
+
+    y1_pred = np.array([]).reshape(0,8)
+    y1_true = np.array([]).reshape(0,8)
+
+    y2_pred = np.array([]).reshape(0,19)
+    y2_true = np.array([]).reshape(0,19)
 
     for i in range(steps):
         features, labels = next(test_generator)
-        batch_pred = model.predict(features)
 
-        y_pred = np.append(y_pred, batch_pred, axis=0)
-        y_true = np.append(y_true, labels, axis=0)
+        batch0t, batch1t, batch2t = labels
+        batch0p, batch1p, batch2p = model.predict(features)
 
-    y_true = np.argmax(y_true, axis=1)
-    y_pred = np.argmax(y_pred, axis=1)
-    return y_pred, y_true
+        y0_pred = np.append(y0_pred, batch0p, axis=0)
+        y1_pred = np.append(y1_pred, batch1p, axis=0)
+        y2_pred = np.append(y2_pred, batch2p, axis=0)
+
+        y0_true = np.append(y0_true, batch0t, axis=0)
+        y1_true = np.append(y1_true, batch1t, axis=0)
+        y2_true = np.append(y2_true, batch2t, axis=0)
+
+    y0_true = np.argmax(y0_true, axis=1)
+    y1_true = np.argmax(y1_true, axis=1)
+    y2_true = np.argmax(y2_true, axis=1)
+
+    y0_pred = np.argmax(y0_pred, axis=1)
+    y1_pred = np.argmax(y1_pred, axis=1)
+    y2_pred = np.argmax(y2_pred, axis=1)
+
+    return [y0_pred, y1_pred, y2_pred], [y0_true, y1_true, y2_true]
 
 def get_nb_files(directory):
     """Get number of files by searching directory recursively"""
@@ -117,8 +137,11 @@ if __name__=="__main__":
     ### TO DO: FIX THIS FOR MULTIPLE y's
     y_pred, y_true = predictor(model, gen_test, steps = test_steps)
 
-    conf = confusion_matrix(y_true = y_true, y_pred = y_pred)
-    f1scores  = f1_score(y_true = y_true, y_pred = y_pred, average = None)
+    conf=[]
+    f1scores=[]
+    for y_p, y_t in zip(y_pred, y_true):
+        conf.append(confusion_matrix(y_true = y_t, y_pred = y_p))
+        f1scores.append(f1_score(y_true = y_t, y_pred = y_p, average = None))
 
     np.savez(save_dir + "output_vars.npz",
         scores      = scores,
