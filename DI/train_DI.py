@@ -25,7 +25,7 @@ from keras.utils import plot_model
 
 
 batch_size = 32
-NB_EPOCHS  = 20
+NB_EPOCHS  = 10
 
 test_address  = "/project/BEN_DL/split_images/benthoz_retrain/testing"
 val_address  = "/project/BEN_DL/split_images/retrain_50/testing"
@@ -39,9 +39,11 @@ def transfer_learn_DI(model):
     for layer in model.layers:
         if layer.name.endswith('source_arm') or layer.name.endswith('crop_arm'):
             layer.trainable = False
+        else:
+            layer.trainable = True
 
     model.compile(
-        optimizer='rmsprop',
+        optimizer='rmsprop', #Adam(lr=0.0001),#(other fine tuning)
         loss='categorical_crossentropy',
         metrics=[
             metrics.categorical_accuracy,
@@ -73,6 +75,8 @@ def get_nb_files(directory):
 if __name__=="__main__":
     a = argparse.ArgumentParser()
     a.add_argument("--source_layer", default='mixed2')
+    a.add_argument("--n_kernels", default=128, type=int)
+    a.add_argument("--n_hidden", default=512, type=int)
     args = a.parse_args()
     trial_num = max([int(d) for d in os.listdir(out_path) if os.path.isdir(out_path + d) and d.isdigit()] +[0]) + 1
     save_dir = out_path + str(trial_num) + "/"
@@ -88,22 +92,13 @@ if __name__=="__main__":
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    model = dual_im(nb_classes, 'mixed0', args.source_layer)
+    model = dual_im(nb_classes, args.source_layer, args.n_kernels, args.n_hidden)
 
     transfer_learn_DI(model)
 
     dim_gen_test  = dual_im_gen(test_address,  batch_size)
     dim_gen_val   = dual_im_gen(val_address,   batch_size)
     dim_gen_train = dual_im_gen(train_address, batch_size)
-
-    # tensorboard = keras.callbacks.TensorBoard(
-    #     log_dir=save_dir,
-    #     histogram_freq=5,
-    #     batch_size=batch_size,
-    #     write_graph=True,
-    #     write_grads=False,
-    #     write_images=True
-    #     )
 
     history_tl = model.fit_generator(
         dim_gen_train,
@@ -112,11 +107,10 @@ if __name__=="__main__":
         validation_data=dim_gen_val,
         validation_steps=val_steps,
         class_weight='auto',
-#        callbacks = [tensorboard], #tensorboard only works when not using generator for validation data if printing histograms
         verbose =1
         )
 
-    model.save(save_dir  + "model.model")
+    model.save(save_dir  + "model.h5")
 
     scores = model.evaluate_generator(dim_gen_test, steps = test_steps)
     y_pred, y_true = predictor(model, dim_gen_test, steps = test_steps)

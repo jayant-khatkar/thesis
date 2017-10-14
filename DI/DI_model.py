@@ -19,18 +19,18 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 from keras.utils import plot_model
+from keras.models import load_model
 
 FC_SIZE = 1024
 
 
-def dual_im(nb_classes, crop_layer, source_layer):
+def dual_im(nb_classes, source_layer, n_kernels, n_hidden):
     """
     Create Dual Image Input Net
 
     Args:
         nb_classes: # of classes in putput
-        crop_layer: layer of inception to go till for crops
-        source_layer: " " " for sources
+        source_layer: layer of inception to go till for sources
 
     Returns:
         keras Model
@@ -38,11 +38,12 @@ def dual_im(nb_classes, crop_layer, source_layer):
     """
 
     # get cropped image arm of net's pretrained weights
-    crop_arm = InceptionV3(weights='imagenet', include_top=True, input_shape=(150,150,3))
-    while not crop_arm.layers[-1] == crop_arm.get_layer(crop_layer):
+    crop_arm = load_model("/project/BEN_DL/output/retrained/finetune/6/model.h5")
+    # crop_arm = InceptionV3(weights='imagenet', include_top=True, input_shape=(150,150,3))
+    while not crop_arm.layers[-1].name == "global_average_pooling2d_1":
         crop_arm.layers.pop()
 
-    crop_out = crop_arm.get_layer(crop_layer).output
+    crop_out = crop_arm.layers[-1].output
 
     #rename because layer names must be unique & using two inception inputs
     for layer in crop_arm.layers:
@@ -59,20 +60,20 @@ def dual_im(nb_classes, crop_layer, source_layer):
         layer.name = layer.name + 'source_arm'
 
     #add convolutional layers with stride of 2 to reduce size
-    my_conv1source = Conv2D(64, (3,3), strides=(2, 2), padding='valid', activation='relu')(source_out)
-    my_conv1crop   = Conv2D(64, (3,3), strides=(2, 2), padding='valid', activation='relu')(crop_out)
-    my_conv2source = Conv2D(64, (3,3), strides=(2, 2), padding='valid', activation='relu')(my_conv1source)
-    my_conv2crop   = Conv2D(64, (3,3), strides=(2, 2), padding='valid', activation='relu')(my_conv1crop)
+    my_conv1source = Conv2D(n_kernels, (3,3), strides=(2, 2), padding='valid', activation='relu')(source_out)
+    # my_conv1crop   = Conv2D(64, (3,3), strides=(2, 2), padding='valid', activation='relu')(crop_out)
+    my_conv2source = Conv2D(n_kernels, (3,3), strides=(1, 1), padding='valid', activation='relu')(my_conv1source)
+    # my_conv2crop   = Conv2D(64, (3,3), strides=(2, 2), padding='valid', activation='relu')(my_conv1crop)
 
     # global pool to reduce size further
-    crop_pool   = GlobalAveragePooling2D()(my_conv2crop)
+    # crop_pool   = GlobalAveragePooling2D()(my_conv2crop)
     source_pool = GlobalAveragePooling2D()(my_conv2source)
 
     #concatenate the outputs of the two layers
-    my_merge = keras.layers.concatenate([crop_pool, source_pool])
+    my_merge = keras.layers.concatenate([crop_out, source_pool])
 
     #add hidden and output layer to produce model
-    hidden = Dense(512, activation='relu')(my_merge)
+    hidden = Dense(n_hidden, activation='relu')(my_merge)
     predictions = Dense(nb_classes, activation='softmax')(hidden)
 
     model = Model(inputs=[crop_arm.input, source_arm.input], outputs=predictions)
