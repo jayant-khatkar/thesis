@@ -66,14 +66,14 @@ def hier_gen(data_dir, batch_size):
         # Get hierarchcical data hierarchcical data here
         y = np.argmax(y_hot, axis =1)
         ys = hier_map[y] #converted to hierarchy
+        b_size = len(y)
+        y0 = np.zeros((b_size, 3), dtype=np.int8)
+        y0[np.arange(b_size), ys[:,0]] = 1
 
-        y0 = np.zeros((batch_size, 3), dtype=np.int8)
-        y0[np.arange(batch_size), ys[:,0]] = 1
+        y1 = np.zeros((b_size, 8), dtype=np.int8)
+        y1[np.arange(b_size), ys[:,1]] = 1
 
-        y1 = np.zeros((batch_size, 8), dtype=np.int8)
-        y1[np.arange(batch_size), ys[:,1]] = 1
-
-        y2 = np.zeros((batch_size, 19), dtype=np.int8)
-        y2[np.arange(batch_size), ys[:,2]] = 1
+        y2 = np.zeros((b_size, 19), dtype=np.int8)
+        y2[np.arange(b_size), ys[:,2]] = 1
 
         yield ims, [y0,y1,y2]

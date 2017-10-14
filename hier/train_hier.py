@@ -19,10 +19,13 @@ batch_size = 32
 NB_EPOCHS  = 10
 
 test_address  = "/project/BEN_DL/split_images/benthoz_retrain/testing"
+#test_address = "/Users/user1/Desktop/thesis/data/split_images/benthoz_retrain/testing"
 val_address   = "/project/BEN_DL/split_images/retrain_50/testing"
+#val_address = test_address
 train_address = "/project/BEN_DL/split_images/benthoz_retrain/training"
+#train_address = "/Users/user1/Desktop/thesis/data/split_images/benthoz_retrain/training"
 out_path      = "/project/BEN_DL/output/hier/"
-
+#out_path = "/Users/user1/Desktop/pbs_outputs"
 def transfer_learn_hier(model):
 
     for layer in model.layers:
@@ -123,7 +126,7 @@ if __name__=="__main__":
         steps_per_epoch=train_steps,
         validation_data=gen_val,
         validation_steps=val_steps,
-        class_weight='auto',
+        # class_weight='auto',
 #        callbacks = [tensorboard], #tensorboard only works when not using generator for validation data if printing histograms
         verbose =1
         )
